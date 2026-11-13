@@ -171,10 +171,9 @@ a.dlbtn{display:block;text-align:center;text-decoration:none;padding:11px 14px;b
         <div class="form">
           <label class="sgw">ชื่อบอส<input id="fn" placeholder="พิมพ์ชื่อ เช่น Vale Keeper" autocomplete="off" role="combobox" aria-expanded="false"><div class="sg" id="sg" hidden></div></label>
           <div class="r2">
-            <label>รีสปอว์น (นาที)<input id="fr" type="number" min="1" placeholder="เช่น 180"></label>
-            <label title="บอสที่เกิดไม่ตรงเวลา ใส่ช่วงสุ่ม เช่น 5 = เกิดก่อน/หลังได้ 5 นาที">สุ่ม ± (นาที)<input id="fv" type="number" min="0" value="0"></label>
+            <label title="Mini-boss = 30 นาที · Field Boss = 180 นาที (ล็อกอัตโนมัติ)">รีสปอว์น (นาที)<input id="fr" type="number" min="1" placeholder="เช่น 180"></label>
+            <label>เหลือเวลาเกิด (นาที)<input id="fa" type="number" min="0" placeholder="ว่าง = ยังไม่จับเวลา"></label>
           </div>
-          <label>ตายไปแล้ว (นาที)<input id="fa" type="number" min="0" placeholder="ว่าง = ยังไม่จับเวลา"></label>
           <button class="pri" id="add">+ เพิ่มบอส</button>
           <button id="addall">+ เพิ่มทั้งหมดจากรายการ</button>
         </div>
@@ -184,7 +183,7 @@ a.dlbtn{display:block;text-align:center;text-decoration:none;padding:11px 14px;b
   </div>
 </div>
 
-<footer class="credit">สร้างโดย <b>CAPY</b></footer>
+<footer class="credit">สร้างโดย <b>CAPY</b> · เว็บอัพเดทล่าสุดวันที่ 13-11-2569</footer>
 <div class="toast" id="toast"><span id="tmsg"></span><button id="undo">เลิกทำ</button></div>
 <dialog id="dld">
   <h3 style="margin:0 0 6px">ดาวน์โหลดโปรแกรมเดสก์ท็อป (Windows)</h3>
@@ -237,7 +236,8 @@ const on=i=>i.r>0&&i.k!=null;
 const spawn=i=>on(i)?i.k+(i.r-(i.v||0))*60000:null;
 const late=i=>i.k+(i.r+(i.v||0))*60000;
 const stateOf=(i,now)=>{if(!on(i))return"idle";const rem=spawn(i)-now;return rem<=0?"up":rem<=S.warn*60000?"soon":"run"};
-const beat=()=>S.items.forEach(i=>i.id||(i.id=++uid+"_"+Date.now()));
+const FR=n=>{const b=bfind(n);return b?(b[3]==="F"?180:30):null};
+const beat=()=>S.items.forEach(i=>{i.id||(i.id=++uid+"_"+Date.now());const f=FR(i.n);if(f)i.r=f;i.v=0});
 const remember=()=>{snap=JSON.stringify(S.items);canUndo=true};
 function toast(msg){$("#tmsg").textContent=msg;$("#undo").style.display=canUndo?"":"none";canUndo=false;const t=$("#toast");t.style.display="flex";clearTimeout(tt);tt=setTimeout(()=>t.style.display="none",6000)}
 function beep(n){if(!S.sound)return;try{ac=ac||new(window.AudioContext||window.webkitAudioContext)();if(ac.state==="suspended")ac.resume();for(let k=0;k<n;k++){const o=ac.createOscillator(),g=ac.createGain();o.connect(g);g.connect(ac.destination);o.frequency.value=n>1?880:620;g.gain.value=.15;const t=ac.currentTime+k*.28;o.start(t);o.stop(t+.18)}}catch(e){}}
@@ -257,7 +257,7 @@ const card=i=>{const m=meta(i);return `<div class="card${i.f?" flash":""}" data-
   <div class="ct">${av(i.n)}<div class="ci"><b title="${esc(i.n)}">${esc(i.n)}</b><small>${m.lv?"Lv "+m.lv+" · ":""}${TN[m.t]}</small></div><button class="x pin${i.p?" on":""}" data-a="pin" title="ปักหมุดไว้บนสุด" aria-label="ปักหมุด">${i.p?"★":"☆"}</button><button class="x" data-a="del" title="ลบ" aria-label="ลบ">×</button></div>
   <div class="t" data-t></div><div class="sub" data-s></div><div class="meter"><i data-b></i></div>
   <div class="acts"><button class="pri" data-a="reset" title="เริ่มจับเวลาใหม่">↻ รีเซ็ต</button><button data-a="m1" title="เร็วขึ้น 1 นาที">−1m</button><button data-a="p1" title="ช้าลง 1 นาที">+1m</button></div>
-  <label class="rs">รีสปอว์น <input class="rsi" type="number" min="1" value="${i.r||""}" placeholder="นาที" data-rs="${i.id}"> นาที</label></div>`};
+  ${FR(i.n)?`<div class="rs">รีสปอว์น <b>${i.r}</b> นาที (คงที่)</div>`:`<label class="rs">รีสปอว์น <input class="rsi" type="number" min="1" value="${i.r||""}" placeholder="นาที" data-rs="${i.id}"> นาที</label>`}</div>`};
 function render(){
   beat();
   const l=visible();
@@ -326,9 +326,10 @@ function sug(){const q=$("#fn").value.trim().toLowerCase();
   sl=BOSS.concat(mine).filter(b=>!q||b[0].toLowerCase().includes(q)).slice(0,24);
   $("#sg").innerHTML=sl.map((b,k)=>`<div class="sgi${k===si?" on":""}" data-k="${k}">${av(b[0])}<span class="sgn"><b>${esc(b[0])}</b><small>${b[1]?"Lv "+b[1]:""}${b[2]?" · "+esc(b[2]):""}</small></span><em class="tg tg${b[3]}">${TN[b[3]]}</em></div>`).join("");
   const o=sl.length>0;$("#sg").hidden=!o;$("#fn").setAttribute("aria-expanded",o)}
-function fill(n){const b=bfind(n),r=S.rec[b?b[0]:n];if(r){$("#fr").value=r;$("#fv").value=S.rv[b?b[0]:n]||0}else if(b&&b[3]==="F"){$("#fr").value=180;$("#fv").value=0}else{$("#fr").value="";$("#fv").value=0}}
+function lockR(){const f=FR($("#fn").value.trim()),e=$("#fr");if(f){e.value=f;e.readOnly=true;e.title="ล็อกตามประเภทบอส"}else{e.readOnly=false;e.title=""}}
+function fill(n){const b=bfind(n),r=b?FR(b[0]):S.rec[n];$("#fr").value=r||"";lockR()}
 function pick(k){const b=sl[k];if(!b)return;$("#fn").value=b[0];fill(b[0]);$("#sg").hidden=true;si=-1;$("#fr").focus();$("#fr").select()}
-$("#fn").addEventListener("input",()=>{si=-1;sug()});
+$("#fn").addEventListener("input",()=>{si=-1;sug();lockR()});
 $("#fn").addEventListener("focus",sug);
 $("#fn").addEventListener("blur",()=>setTimeout(()=>{$("#sg").hidden=true},120));
 $("#fn").addEventListener("keydown",e=>{if($("#sg").hidden)return;
@@ -339,19 +340,21 @@ $("#sg").addEventListener("mousedown",e=>{const d=e.target.closest(".sgi");if(d)
 
 function add(){
   try{if("Notification" in window&&Notification.permission==="default")Notification.requestPermission()}catch(e){}
-  const n0=$("#fn").value.trim(),rv=+$("#fr").value,r=rv>0?rv:null,ago=$("#fa").value,v=Math.max(0,Math.min(+$("#fv").value||0,(r||1)-1));
+  const n0=$("#fn").value.trim(),rv=FR(n0)||+$("#fr").value,r=rv>0?rv:null,ago=$("#fa").value,v=0;
   if(!n0){$("#fn").focus();return toast("กรอกชื่อบอสก่อน")}
   const b=bfind(n0),n=b?b[0]:n0;
+  const ex=S.items.find(i=>i.n.toLowerCase()===n.toLowerCase()),rr=r||(ex&&ex.r)||null;
+  if(ago!==""&&!rr)return toast("ใส่เวลารีสปอว์นก่อน จึงจะคำนวณเวลาเกิดได้");
   remember();
-  const k=ago===""?null:Date.now()-(+ago)*60000,ex=S.items.find(i=>i.n.toLowerCase()===n.toLowerCase());
+  const k=ago===""?null:Date.now()+(Math.min(Math.max(+ago||0,0),rr)-rr)*60000;
   if(ex){if(r){ex.r=r;ex.v=v}if(k!=null)ex.k=k}else S.items.push({n,r,v,k});
   if(r){S.rec[n]=r;S.rv[n]=v}
-  $("#fn").value="";$("#fa").value="";$("#fr").value="";$("#fv").value=0;
+  $("#fn").value="";$("#fa").value="";$("#fr").value="";lockR();
   render();toast(`${ex?"อัปเดต":"เพิ่ม"} ${n} แล้ว`+(r?"":" · อย่าลืมตั้งเวลารีสปอว์น"));
 }
 $("#add").onclick=add;
-["fn","fr","fv","fa"].forEach(id=>$("#"+id).addEventListener("keydown",e=>{if(e.key==="Enter")add()}));
-$("#addall").onclick=()=>{remember();let c=0;BOSS.forEach(b=>{if(!S.items.some(i=>i.n===b[0])){S.items.push({n:b[0],r:S.rec[b[0]]||(b[3]==="F"?180:null),v:S.rv[b[0]]||0,k:null});c++}});render();toast(c?`เพิ่ม ${c} บอสจากรายการแล้ว`:"มีบอสทั้งหมดอยู่แล้ว")};
+["fn","fr","fa"].forEach(id=>$("#"+id).addEventListener("keydown",e=>{if(e.key==="Enter")add()}));
+$("#addall").onclick=()=>{remember();let c=0;BOSS.forEach(b=>{if(!S.items.some(i=>i.n===b[0])){S.items.push({n:b[0],r:FR(b[0]),v:0,k:null});c++}});render();toast(c?`เพิ่ม ${c} บอสจากรายการแล้ว`:"มีบอสทั้งหมดอยู่แล้ว")};
 
 $("#q").oninput=e=>{S.q=e.target.value;render()};
 $("#sort").onchange=e=>{S.sort=e.target.value;render()};
@@ -498,9 +501,9 @@ function roomUI(){const R=S.room,b=$("#roomb");
 $("#roomb").addEventListener("click",e=>{const id=(e.target.closest("button")||{}).id;
   if(id==="rnewp")mkP2P();else if(id==="rnew")mkRoom();else if(id==="rjoin")joinRoom();else if(id==="rlv")leaveRoom();
   else if(id==="rcp"){const R=S.room;copyText(R.mode==="p2p"?fc(R.code):enc({u:R.url,c:R.code}));const bt=$("#rcp"),old=bt.textContent;bt.textContent="คัดลอกแล้ว ✓";setTimeout(()=>{const x=$("#rcp");if(x)x.textContent=old},1500)}});
-const DOWNLOAD_URL="";
-(()=>{const d=$("#dld"),a=$("#dla");if(DOWNLOAD_URL){a.href=DOWNLOAD_URL;$("#dlnone").hidden=true}else a.hidden=true;
-  $("#dl").onclick=()=>d.showModal();$("#dlx").onclick=()=>d.close();if(window.bt)$("#dl").hidden=true})();
+const DOWNLOAD_URL="https://github.com/CAYBAROSS/Bindertown_BossTracker/releases/download/V.1.1/BossTracker-win.zip";
+(()=>{$("#dl").onclick=()=>{const a=document.createElement("a");a.href=DOWNLOAD_URL;a.rel="noopener";document.body.appendChild(a);a.click();a.remove();toast("กำลังดาวน์โหลด BossTracker-win.zip · แตกไฟล์แล้วเปิด BossTracker.exe")};
+  if(window.bt)$("#dl").hidden=true})();
 function syncUI(){
   document.documentElement.dataset.theme=S.theme||(matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light");
   $("#snd").textContent="🔔 เสียง: "+(S.sound?"เปิด":"ปิด");syncPip();
